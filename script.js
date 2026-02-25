@@ -157,7 +157,8 @@ function initAuth() {
     if (!authToken && localStorage.getItem('manualMode') === 'true') {
         manualMode = true;
     }
-    if (authToken || manualMode) showDashboard();
+    // Do not auto-navigate to the dashboard here. We want the sign-in
+    // page to appear first on site open so users can actively authenticate.
 }
 
 async function showDashboard() {
@@ -188,8 +189,9 @@ function logout() {
     document.querySelector('nav').style.display = 'flex';
     document.getElementById('logoutBtn').style.display = 'none';
     document.getElementById('adminNav').style.display = 'none';
+    // Ensure the site returns to the main sign-in page after logout
     document.getElementById('login').style.display = '';
-    showSection('home');
+    showSection('login');
     // also tell Google to forget auto select
     if (window.google && google.accounts && google.accounts.id) {
         google.accounts.id.disableAutoSelect();
@@ -199,24 +201,47 @@ function logout() {
 // Show/hide sections
 function showSection(sectionId) {
     console.log('Navigating to:', sectionId);
-    
-    // Hide ALL sections first
+    // Prevent access to certain sections unless authenticated
+    const protectedSections = new Set(['home','register','lists','admin','ownerPanel','institutionDetails']);
+    if (protectedSections.has(sectionId) && !(authToken || manualMode)) {
+        alert('Please sign in first to access that page.');
+        showSection('login');
+        return;
+    }
+    // Smoothly transition between sections
     const allSections = document.querySelectorAll('.content-section');
-    allSections.forEach(sec => {
-        sec.style.display = 'none';
-        sec.classList.remove('active');
-    });
-    
-    // Show the requested section
     const targetSection = document.getElementById(sectionId);
-    if (targetSection) {
-        targetSection.style.display = 'block';
-        targetSection.classList.add('active');
-        console.log('Showed section:', sectionId);
-    } else {
+    if (!targetSection) {
         console.error('Section not found:', sectionId);
         return;
     }
+
+    // Find currently visible section (if any) and hide it with transition
+    const currentlyVisible = Array.from(allSections).find(s => s.style.display !== 'none' && s !== targetSection);
+    if (currentlyVisible) {
+        // remove showing so CSS transition runs
+        currentlyVisible.classList.remove('showing');
+        currentlyVisible.classList.remove('active');
+        // after transition ends, set display none
+        setTimeout(() => {
+            if (currentlyVisible) currentlyVisible.style.display = 'none';
+        }, 320);
+    }
+
+    // Prepare and show target section with transition
+    // If already visible, ensure classes are correct
+    if (targetSection.style.display === 'block') {
+        // already visible — ensure showing class present
+        targetSection.classList.add('showing');
+        targetSection.classList.add('active');
+    } else {
+        targetSection.style.display = 'block';
+        // force reflow so transition can start
+        void targetSection.offsetWidth;
+        targetSection.classList.add('showing');
+        targetSection.classList.add('active');
+    }
+    console.log('Showed section:', sectionId);
     
     // Manage navigation and logout button
     const nav = document.querySelector('nav');
@@ -844,6 +869,11 @@ function initializeSampleDataIfNeeded() {
     }
     hideBrokenImages();
 
-    // Show home page by default, with navigation visible
-    showSection('home');
+    // Show home page by default for authenticated users,
+    // otherwise show the sign-in page so users can authenticate.
+    if (authToken || manualMode) {
+        showSection('home');
+    } else {
+        showSection('login');
+    }
 })();
