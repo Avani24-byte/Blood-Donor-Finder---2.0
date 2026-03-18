@@ -1,5 +1,4 @@
 # Blood Donor Finder
-Collaborative Blood Donor Finder system for locating nearby donors efficiently.
 
 ## Overview
 Blood Donor Finder is a web-based platform that connects voluntary blood donors with people and institutions in need. The project now includes both a **client-facing interface** and a **backend server** for persistent storage, along with an **owner/admin dashboard**.
